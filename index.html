@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Drifting CODE, SVP and dummies (2022) from Emilio García</title>
+  <meta name="description" content="This webiste shows the tracks of different drifters.">
+  <meta name="keywords" content="drifters, currents, code, svp, dummy, ICM, CSIC">
+  <meta name="author" content="Gerard Llorach Tó (code), Emilio García (data)">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <script src="openlayers/ol.js"></script>
+  <link rel="stylesheet" href="openlayers/ol.css">
+  <style>
+    * {
+      font-family: cursive;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+    }
+
+    #map {
+      width: 100vw;
+      height: 100vh;
+      position: absolute;
+    }
+
+    #slider-container {
+      position: absolute;
+      z-index: 1;
+      bottom: 100px;
+      width: 70%;
+      left: 50%;
+      transform: translateX(-50%);
+
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+
+
+      padding: 20px;
+      border-radius: 10px;
+      background: #7ab0df8a;
+
+    }
+
+    #time-slider {
+      width: 100%;
+    }
+
+    #time-display {
+      color: white;
+      text-shadow: 0 0 4px black;
+    }
+
+    .info {
+      position: absolute;
+      bottom: 20px;
+      font-size: large;
+      color: white;
+      text-shadow: 0 0 4px black;
+      width: 100vw;
+      text-align: center;
+    }
+
+    #buttons-container {
+      position: absolute;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      top: 50px;
+    }
+
+    .drifter-button {
+      margin: 2px;
+      user-select: none;
+      border-radius: 10px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      background: #217ccd;
+      color: white;
+      text-shadow: 0 0 4px black;
+      border: none;
+      box-shadow: 0 0 4px black;
+    }
+
+    .drifter-button:hover {
+      transform: scale(1.1);
+      transition: all 0.5 ease-in-out;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Map -->
+  <div id="map" class="map"></div>
+  <!-- Time slider -->
+  <div id="slider-container">
+    <input type="range" id="time-slider" min="0" max="0" step="1" value="0">
+    <div id="time-display"></div>
+  </div>
+  <!-- Info -->
+  <div class="info">Data from Emilio García. Visualization made by Gerard Llorach (ICATMAR, ICM-CSIC)</div>
+  <!-- Drifters on/off -->
+  <div id="buttons-container"></div>
+
+
+  <script>
+    // Load geojson files
+    const filePaths = [
+      'data/MEDOSC-4_300534061783350.geojson',
+      'data/MEDOSC-5_300534061783340.geojson',
+      'data/medosmosis1_0-4421909.geojson',
+      'data/medosmosis2_0-4426357.geojson',
+      'data/medosmosis3_0-4422619.geojson',
+      'data/medosmosis4_0-4425617.geojson',
+      'data/medosmosis5_0-4423374.geojson',
+      'data/medosmosis6_0-4423366-tt.geojson',
+      'data/medosmosis6_0-4423366.geojson',
+    ]
+
+
+    // Organize data by drifter ID
+    const drifterTracks = {};
+    const drifterStartPoints = {};
+    const drifterEndPoints = {};
+    const timestamps = [];
+
+    // Function to load and parse GeoJSON files
+    function loadGeoJSONFiles(files) {
+      const promises = files.map(file => fetch(file).then(response => response.json()));
+
+      Promise.all(promises).then(dataArray => {
+        debugger;
+        dataArray.forEach((geojsonData, index) => {
+          // Iterate geojson file
+          let drifterType = '';
+          let drifterKey = undefined;
+          geojsonData.features.forEach(feature => {
+            const coords = feature.geometry.coordinates;
+            let timeDate = undefined;
+
+            // Define drifter key
+            if (feature.properties.code_sn != ""){
+              let source = feature.properties.source;
+              let code_sn = feature.properties.code_sn;
+              drifterType = source == 'dummy_v' ? 'Dummy' : source == 'dr_svp' ? 'SVP' : source == 'dr_surface' ? 'CODE' : 'Unknown';
+              drifterKey = drifterType + '_' + code_sn;
+            } 
+            
+
+            // Start end point
+            if (feature.properties.event == 0 && feature.geometry.type == 'Point') {
+              timeDate = new Date(feature.properties.time.data[0]);
+              drifterStartPoints[drifterKey] = {
+                coords: coords,
+                time: timeDate
+              };
+              timestamps.push(timeDate);
+            } else if (feature.properties.event == 1 && feature.geometry.type == 'Point') {
+              timeDate = new Date(feature.properties.time.data[0]);
+              drifterEndPoints[drifterKey] = {
+                coords: coords,
+                time: timeDate
+              };
+              timestamps.push(timeDate);
+            }
+            // Line
+            else {
+              let values = [];
+              for (let i = 0; i < coords.length; i++) {
+                timeDate = new Date(feature.properties.time.data[i]);
+                
+                values.push({
+                  coords: coords[i],
+                  time: timeDate,
+                });
+                timestamps.push(timeDate);
+              }
+              drifterTracks[drifterKey] = values;
+            }
+          });
+        });
+
+        timestamps.sort((a, b) => a - b);
+        const uniqueTimestamps = Array.from(new Set(timestamps));
+        debugger;
+
+        // Create OpenLayers map
+        const map = new ol.Map({
+          target: 'map',
+          layers: [
+            new ol.layer.Tile({
+              source: new ol.source.XYZ({
+                url: 'https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}.png',
+                attributions: '© Esri, Maxar, GeoEye, Earthstar Geographics, CNES/Airbus DS, USDA, USGS, AeroGRID, IGN, and the GIS User Community',
+                cacheSize: 500,
+                crossOrigin: 'anonymous',
+              })
+            })
+          ],
+          view: new ol.View({
+            center: ol.proj.fromLonLat([21.0174, 38.0680166666667]),  // Center on initial coordinates
+            zoom: 10
+          })
+        });
+
+        const vectorSources = {};
+        const vectorLayers = {};
+
+        Object.keys(drifterTracks).forEach(id => {
+          vectorSources[id] = new ol.source.Vector();
+          vectorLayers[id] = new ol.layer.Vector({
+            source: vectorSources[id]
+          });
+          map.addLayer(vectorLayers[id]);
+        });
+
+        // HTML elements
+        const timeSlider = document.getElementById('time-slider');
+        const timeDisplay = document.getElementById('time-display');
+        const buttonsContainer = document.getElementById('buttons-container');
+
+        timeSlider.max = uniqueTimestamps.length - 1;
+        timeSlider.oninput = function () {
+          const selectedTime = uniqueTimestamps[this.value];
+          timeDisplay.textContent = selectedTime.toLocaleString();
+          updateDrifterPositions(selectedTime);
+        };
+
+        generateRandomColors = function (number) {
+          let colors = [];
+          for (let i = 0; i < number; i++) {
+            colors[i] = "hsla(" + 360 * Math.random() + ',' +
+              (25 + 70 * Math.random()) + '%,' +
+              (50 + 10 * Math.random()) + '%,' +
+              '0.85)';
+          }
+          return colors;
+        };
+
+        const colors = generateRandomColors(25);
+
+        function updateDrifterPositions(selectedTime) {
+          Object.keys(drifterTracks).forEach((id, index) => {
+            vectorSources[id].clear();
+            const track = drifterTracks[id].filter(entry => entry.time <= selectedTime).map(entry => ol.proj.fromLonLat(entry.coords));
+            if (track.length > 0) {
+              const trackFeature = new ol.Feature({
+                geometry: new ol.geom.LineString(track)
+              });
+              trackFeature.setStyle(new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                  color: colors[index % colors.length],
+                  width: 2
+                })
+              }));
+              vectorSources[id].addFeature(trackFeature);
+            }
+          });
+        }
+
+        // Create toggle buttons for each drifter
+        Object.keys(drifterTracks).forEach((id, index) => {
+          const button = document.createElement('button');
+          button.textContent = `${id} ON/OFF`;
+          button.className = 'drifter-button';
+
+          let div = document.createElement('div');
+          div.style['border-radius'] = '20px';
+          div.style.width = '20px';
+          div.style.height = '20px';
+          div.style['box-shadow'] = '0 0 4px black';
+          div.style.background = colors[index % colors.length];
+          button.appendChild(div);
+
+          button.onclick = function () {
+            let isVisible = !vectorLayers[id].getVisible();
+            vectorLayers[id].setVisible(!vectorLayers[id].getVisible());
+            button.style.background = isVisible ? '#217ccd' : 'black';
+          };
+          buttonsContainer.appendChild(button);
+        });
+
+        // Initialize the slider display
+        timeSlider.value = 0.01;
+        let initIndex = Math.floor(uniqueTimestamps.length * 0.01);
+        timeDisplay.textContent = uniqueTimestamps[initIndex].toLocaleString();
+        updateDrifterPositions(uniqueTimestamps[initIndex]);
+      });
+    }
+
+    // Load the GeoJSON files
+    loadGeoJSONFiles(filePaths);
+  </script>
+</body>
+
+</html>
