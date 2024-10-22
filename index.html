@@ -4,10 +4,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Drifting CODE, SVP and dummies (2022) from Emilio García</title>
+  <title>Drifting CODE, SVP and dummies (2022) from Emilio García-Ladona</title>
   <meta name="description" content="This webiste shows the tracks of different drifters.">
   <meta name="keywords" content="drifters, currents, code, svp, dummy, ICM, CSIC">
-  <meta name="author" content="Gerard Llorach Tó (code), Emilio García (data)">
+  <meta name="author" content="Gerard Llorach Tó (code), Emilio García-Ladona (data)">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
   <script src="openlayers/ol.js"></script>
@@ -105,7 +105,7 @@
     <div id="time-display"></div>
   </div>
   <!-- Info -->
-  <div class="info">Data from Emilio García. Visualization made by Gerard Llorach (ICATMAR, ICM-CSIC)</div>
+  <div class="info">Data from Emilio García-Ladona. Visualization made by Gerard Llorach (ICATMAR, ICM-CSIC)</div>
   <!-- Drifters on/off -->
   <div id="buttons-container"></div>
 
@@ -136,7 +136,7 @@
       const promises = files.map(file => fetch(file).then(response => response.json()));
 
       Promise.all(promises).then(dataArray => {
-        debugger;
+        
         dataArray.forEach((geojsonData, index) => {
           // Iterate geojson file
           let drifterType = '';
@@ -189,7 +189,7 @@
 
         timestamps.sort((a, b) => a - b);
         const uniqueTimestamps = Array.from(new Set(timestamps));
-        debugger;
+        
 
         // Create OpenLayers map
         const map = new ol.Map({
