@@ -146,13 +146,13 @@
             let timeDate = undefined;
 
             // Define drifter key
-            if (feature.properties.code_sn != ""){
+            if (feature.properties.code_sn != "") {
               let source = feature.properties.source;
               let code_sn = feature.properties.code_sn;
               drifterType = source == 'dummy_v' ? 'Dummy' : source == 'dr_svp' ? 'SVP' : source == 'dr_surface' ? 'CODE' : 'Unknown';
               drifterKey = drifterType + '_' + code_sn;
-            } 
-            
+            }
+
 
             // Start end point
             if (feature.properties.event == 0 && feature.geometry.type == 'Point') {
@@ -175,7 +175,7 @@
               let values = [];
               for (let i = 0; i < coords.length; i++) {
                 timeDate = new Date(feature.properties.time.data[i]);
-                
+
                 values.push({
                   coords: coords[i],
                   time: timeDate,
@@ -212,6 +212,8 @@
 
         const vectorSources = {};
         const vectorLayers = {};
+        const tipSources = {};
+        const tipLayers = {};
 
         Object.keys(drifterTracks).forEach(id => {
           vectorSources[id] = new ol.source.Vector();
@@ -219,6 +221,13 @@
             source: vectorSources[id]
           });
           map.addLayer(vectorLayers[id]);
+          // Initialize sources and layers for the tip circles
+          tipSources[id] = new ol.source.Vector();
+          tipLayers[id] = new ol.layer.Vector({
+            source: tipSources[id],
+            zIndex: 1,
+          });
+          map.addLayer(tipLayers[id]);
         });
 
         // HTML elements
@@ -249,6 +258,8 @@
         function updateDrifterPositions(selectedTime) {
           Object.keys(drifterTracks).forEach((id, index) => {
             vectorSources[id].clear();
+            tipSources[id].clear();
+            // Track
             const track = drifterTracks[id].filter(entry => entry.time <= selectedTime).map(entry => ol.proj.fromLonLat(entry.coords));
             if (track.length > 0) {
               const trackFeature = new ol.Feature({
@@ -261,7 +272,27 @@
                 })
               }));
               vectorSources[id].addFeature(trackFeature);
+
+              // Circle point
+              const tipFeature = new ol.Feature({
+                geometry: new ol.geom.Point(track[track.length - 1])
+              });
+              tipFeature.setStyle(new ol.style.Style({
+                image: new ol.style.Circle({
+                  radius: 6,
+                  fill: new ol.style.Fill({
+                    color: colors[index % colors.length]
+                  }),
+                  stroke: new ol.style.Stroke({
+                    color: '#000000',
+                    width: 2
+                  })
+                })
+              }));
+              tipSources[id].addFeature(tipFeature);
             }
+
+
           });
         }
 
@@ -281,7 +312,8 @@
 
           button.onclick = function () {
             let isVisible = !vectorLayers[id].getVisible();
-            vectorLayers[id].setVisible(!vectorLayers[id].getVisible());
+            vectorLayers[id].setVisible(isVisible);
+            tipLayers[id].setVisible(isVisible);
             button.style.background = isVisible ? '#217ccd' : 'black';
           };
           buttonsContainer.appendChild(button);
