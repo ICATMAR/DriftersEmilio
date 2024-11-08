@@ -112,17 +112,31 @@
 
   <script>
     // Load geojson files
+    const folderPath = 'data/20240524/';
     const filePaths = [
-      'data/MEDOSC-4_300534061783350.geojson',
-      'data/MEDOSC-5_300534061783340.geojson',
-      'data/medosmosis1_0-4421909.geojson',
-      'data/medosmosis2_0-4426357.geojson',
-      'data/medosmosis3_0-4422619.geojson',
-      'data/medosmosis4_0-4425617.geojson',
-      'data/medosmosis5_0-4423374.geojson',
-      'data/medosmosis6_0-4423366-tt.geojson',
-      'data/medosmosis6_0-4423366.geojson',
-    ]
+      folderPath + 'MEDOSC-4_300534061783350.geojson',
+      folderPath + 'MEDOSC-5_300534061783340.geojson',
+      folderPath + 'medosmosis1_0-4421909.geojson',
+      folderPath + 'medosmosis2_0-4426357.geojson',
+      folderPath + 'medosmosis3_0-4422619.geojson',
+      folderPath + 'medosmosis4_0-4425617.geojson',
+      folderPath + 'medosmosis5_0-4423374.geojson',
+      folderPath + 'medosmosis6_0-4423366-tt.geojson',
+      folderPath + 'medosmosis6_0-4423366.geojson',
+    ];
+
+    const folderPath2 = 'data/20240203/';
+    const filePaths2 = [
+      folderPath2 + 'MEDOSC-1_300534061787380.geojson',
+      folderPath2 + 'MEDOSC-3_300534061782370.geojson',
+      folderPath2 + 'MEDOSC-5_300534061788360.geojson',
+      folderPath2 + 'medosmosis7_0-3196877.geojson',
+      folderPath2 + 'medosmosis8_0-4422624.geojson',
+      folderPath2 + 'medosmosis9_0-4425822.geojson',
+      folderPath2 + 'medosmosis10_0-4422610.geojson',
+      folderPath2 + 'medosmosis11_0-3196871.geojson',
+      folderPath2 + 'medosmosis12_0-4422609.geojson',
+    ];
 
 
     // Organize data by drifter ID
@@ -136,7 +150,7 @@
       const promises = files.map(file => fetch(file).then(response => response.json()));
 
       Promise.all(promises).then(dataArray => {
-        
+
         dataArray.forEach((geojsonData, index) => {
           // Iterate geojson file
           let drifterType = '';
@@ -205,7 +219,8 @@
             })
           ],
           view: new ol.View({
-            center: ol.proj.fromLonLat([21.0174, 38.0680166666667]),  // Center on initial coordinates
+            //center: ol.proj.fromLonLat([21.0174, 38.0680166666667]),  // Center on initial coordinates
+            center: ol.proj.fromLonLat(drifterStartPoints[Object.keys(drifterStartPoints)[0]].coords),
             zoom: 10
           })
         });
@@ -328,7 +343,7 @@
     }
 
     // Load the GeoJSON files
-    loadGeoJSONFiles(filePaths);
+    loadGeoJSONFiles(filePaths2);
   </script>
 </body>
 
