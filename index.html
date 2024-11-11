@@ -51,6 +51,14 @@
       width: 100%;
     }
 
+    .time-controls {
+      display: flex;
+      flex-direction: row;
+    }
+    .time-controls > * {
+      margin-left: 5px;
+      margin-right: 5px;
+    }
     #time-display {
       color: white;
       text-shadow: 0 0 4px black;
@@ -124,8 +132,19 @@
   <!-- Time slider -->
   <div id="slider-container">
     <input type="range" id="time-slider" min="0" max="0" step="1" value="0">
-    <div id="time-display"></div>
+    <!-- Time display and controls-->
+    <div class="time-controls">
+      <!-- Back in time -->
+      <button class="drifter-button time-control" data-info="-24">&lt;&lt; 1 day</button>
+      <button class="drifter-button time-control" data-info="-1">&lt; 1 hour</button>
+      <!-- Time display-->
+      <div id="time-display"></div>
+      <button class="drifter-button time-control" data-info="1">1 hour ></button>
+      <button class="drifter-button time-control" data-info="24">1 day >></button>
+    </div>
+    
   </div>
+
   <!-- Info -->
   <div class="info">Data from Emilio García-Ladona. Visualization made by Gerard Llorach (ICATMAR, ICM-CSIC)</div>
   <!-- Drifters on/off -->
@@ -394,6 +413,45 @@
         updateDrifterPositions(uniqueTimestamps[initIndex]);
 
 
+
+
+
+        // Time controls
+        const moveInTime = (hours) => {
+          const selectedTime = uniqueTimestamps[timeSlider.value];
+          let targetTime = new Date(selectedTime.getTime());
+          targetTime.setUTCHours(targetTime.getUTCHours() + hours);
+          // Increase the time
+          if (hours > 0){
+            for (let i = timeSlider.value; i < uniqueTimestamps.length; i++){
+              if (uniqueTimestamps[i] > targetTime){
+                timeSlider.value = i;
+                timeDisplay.textContent = uniqueTimestamps[i].toLocaleString();
+                updateDrifterPositions(uniqueTimestamps[i]);
+                i = uniqueTimestamps.length; // Exit loop
+                continue;
+              }
+            }
+          }
+          // Decreased the time
+          else {
+            for (let i = timeSlider.value; i >= 0; i--){
+              if (uniqueTimestamps[i] < targetTime){
+                timeSlider.value = i;
+                timeDisplay.textContent = uniqueTimestamps[i].toLocaleString();
+                updateDrifterPositions(uniqueTimestamps[i]);
+                i = -1; // Exit loop
+                continue;
+              }
+            }
+          }
+        }
+        let timeControls = document.getElementsByClassName('time-control');
+        for (let i = 0; i < timeControls.length; i++){
+          let tCEl = timeControls[i];
+          let dataInfo = parseInt(tCEl.getAttribute('data-info'));
+          tCEl.addEventListener('click', () => moveInTime(dataInfo));
+        }
 
 
 
