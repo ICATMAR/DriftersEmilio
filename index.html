@@ -324,7 +324,7 @@
         timeSlider.max = uniqueTimestamps.length - 1;
         timeSlider.oninput = function () {
           const selectedTime = uniqueTimestamps[this.value];
-          timeDisplay.textContent = selectedTime.toLocaleString();
+          timeDisplay.textContent = selectedTime.toGMTString();
           updateDrifterPositions(selectedTime);
         };
 
@@ -409,7 +409,7 @@
         let startingPercentage = 0;
         timeSlider.value = startingPercentage;
         let initIndex = Math.floor(uniqueTimestamps.length * startingPercentage);
-        timeDisplay.textContent = uniqueTimestamps[initIndex].toLocaleString();
+        timeDisplay.textContent = uniqueTimestamps[initIndex].toGMTString();
         updateDrifterPositions(uniqueTimestamps[initIndex]);
 
 
@@ -426,7 +426,7 @@
             for (let i = timeSlider.value; i < uniqueTimestamps.length; i++){
               if (uniqueTimestamps[i] > targetTime){
                 timeSlider.value = i;
-                timeDisplay.textContent = uniqueTimestamps[i].toLocaleString();
+                timeDisplay.textContent = uniqueTimestamps[i].toGMTString();
                 updateDrifterPositions(uniqueTimestamps[i]);
                 i = uniqueTimestamps.length; // Exit loop
                 continue;
@@ -438,7 +438,7 @@
             for (let i = timeSlider.value; i >= 0; i--){
               if (uniqueTimestamps[i] < targetTime){
                 timeSlider.value = i;
-                timeDisplay.textContent = uniqueTimestamps[i].toLocaleString();
+                timeDisplay.textContent = uniqueTimestamps[i].toGMTString();
                 updateDrifterPositions(uniqueTimestamps[i]);
                 i = -1; // Exit loop
                 continue;
