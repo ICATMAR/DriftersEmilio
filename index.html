@@ -166,7 +166,10 @@
             if (feature.properties.code_sn != "") {
               let source = feature.properties.source;
               let code_sn = feature.properties.code_sn;
-              drifterType = source == 'dummy_v' ? 'Dummy' : source == 'dr_svp' ? 'SVP' : source == 'dr_surface' ? 'CODE' : 'Unknown';
+              drifterType = source == 'dummy_v' ? 'Dummy vertical' :
+                source == 'dr_svp' ? 'SVP' :
+                  source == 'dr_surface' ? 'CODE' :
+                    source == 'liferaft' ? 'Life raft' : 'Unknown';
               drifterKey = drifterType + '_' + code_sn;
             }
 
