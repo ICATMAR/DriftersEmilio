@@ -93,6 +93,28 @@
       transform: scale(1.1);
       transition: all 0.5 ease-in-out;
     }
+
+    #measureButton {
+      position: absolute;
+      top: 20px;
+      left: 40px;
+    }
+
+    .github-link {
+      position: absolute;
+      top: 5px;
+      right: 5px;
+    }
+
+    .github-logo {
+      background: white;
+      border-radius: 50%;
+      border-color: black !important;
+      border-width: thick;
+      border: double;
+      width: 28px;
+      height: 28px;
+    }
   </style>
 </head>
 
@@ -108,6 +130,21 @@
   <div class="info">Data from Emilio García-Ladona. Visualization made by Gerard Llorach (ICATMAR, ICM-CSIC)</div>
   <!-- Drifters on/off -->
   <div id="buttons-container"></div>
+
+  <!-- Github icon -->
+  <!-- Repository -->
+  <a class="github-link" href="https://github.com/ICATMAR/DriftersEmilio" target="_blank" title="Github repository">
+    <svg height="32" aria-hidden="true" viewBox="0 0 16 16" version="1.1" width="32" data-view-component="true"
+      class="clickable github-logo">
+      <path
+        d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z">
+      </path>
+    </svg>
+  </a>
+
+  <!-- Measurement button -->
+  <button id="measureButton" class="drifter-button">Measure Distances</button>
+
 
 
   <script>
@@ -208,7 +245,9 @@
         });
 
         timestamps.sort((a, b) => a - b);
-        const uniqueTimestamps = Array.from(new Set(timestamps));
+        let uniqueTimestamps = Array.from(new Set(timestamps));
+        // Remove first timestamps
+        uniqueTimestamps.splice(0, 30);
 
 
         // Create OpenLayers map
@@ -341,12 +380,128 @@
         });
 
         // Initialize the slider display
-        timeSlider.value = 0.01;
-        let initIndex = Math.floor(uniqueTimestamps.length * 0.01);
+        let startingPercentage = 0;
+        timeSlider.value = startingPercentage;
+        let initIndex = Math.floor(uniqueTimestamps.length * startingPercentage);
         timeDisplay.textContent = uniqueTimestamps[initIndex].toLocaleString();
         updateDrifterPositions(uniqueTimestamps[initIndex]);
-      });
-    }
+
+
+
+
+
+
+
+        // Measurement functionality
+        let measureActive = false;
+        let measurePoints = [];
+        let measureLayer = new ol.layer.Vector({
+          source: new ol.source.Vector(),
+          zIndex: 2
+        });
+        map.addLayer(measureLayer);
+
+        const measureButton = document.getElementById('measureButton');
+        measureButton.onclick = () => {
+          measureActive = !measureActive;
+          measureButton.style.background = measureActive ? 'orange' : '#217ccd';
+          // Mouse cursor
+          let mapEl = document.getElementById('map');
+          mapEl.style.cursor = measureActive ? 'crosshair' : 'default';
+          if (!measureActive) resetMeasurement();  // Clear measurements if turned off
+        };
+
+        // Function to reset measurement layer and points
+        function resetMeasurement() {
+          measureLayer.getSource().clear();
+          measurePoints = [];
+        }
+
+        // Format distance for display
+        function formatDistance(distance) {
+          return distance < 100 ? `${distance.toFixed(1)} m` : `${(distance / 1000).toFixed(2)} km`;
+        }
+
+        // Map click event for adding measurement points
+        map.on('click', (event) => {
+          if (measureActive) {
+            const coord = event.coordinate;
+            measurePoints.push(coord);
+
+            if (measurePoints.length > 1) {
+              const line = new ol.geom.LineString([measurePoints[measurePoints.length - 2], coord]);
+              const distance = ol.sphere.getLength(line);
+              const feature = new ol.Feature(line);
+
+              feature.setStyle(new ol.style.Style({
+                stroke: new ol.style.Stroke({
+                  color: 'rgba(255,255,255,0.8)',
+                  width: 2
+                }),
+                text: new ol.style.Text({
+                  text: formatDistance(distance),
+                  offsetY: -10,
+                  fill: new ol.style.Fill({ color: 'black' }),
+                  stroke: new ol.style.Stroke({ color: 'white', width: 3 })
+                })
+              }));
+              measureLayer.getSource().addFeature(feature);
+              measurePoints = [];
+            }
+          }
+        });
+
+        // Mouse move event to display ongoing distance
+        map.on('pointermove', (event) => {
+          if (measureActive && measurePoints.length > 0) {
+            const lastPoint = measurePoints[measurePoints.length - 1];
+            const mousePoint = event.coordinate;
+
+            // Clear existing temporary feature
+            measureLayer.getSource().clear();
+
+            // Draw existing line segments
+            for (let i = 1; i < measurePoints.length; i++) {
+              const segment = new ol.geom.LineString([measurePoints[i - 1], measurePoints[i]]);
+              const feature = new ol.Feature(segment);
+              measureLayer.getSource().addFeature(feature);
+            }
+
+            // Draw new line from last point to mouse position
+            const tempLine = new ol.geom.LineString([lastPoint, mousePoint]);
+            const distance = ol.sphere.getLength(tempLine);
+            const tempFeature = new ol.Feature(tempLine);
+            tempFeature.setStyle(new ol.style.Style({
+              stroke: new ol.style.Stroke({ color: 'rgba(255,255,255,0.5)', width: 2 }),
+              text: new ol.style.Text({
+                text: formatDistance(distance),
+                offsetY: -10,
+                fill: new ol.style.Fill({ color: 'black' }),
+                stroke: new ol.style.Stroke({ color: 'white', width: 3 })
+              })
+            }));
+            measureLayer.getSource().addFeature(tempFeature);
+          }
+        });
+
+        // End measurement on pressing Escape
+        document.addEventListener('keydown', (event) => 
+        {
+          if (event.key === 'Escape') finalizeMeasurement();
+        });
+
+        function finalizeMeasurement() {
+          if (measureActive) {
+            measureActive = false;
+            measureButton.style.background = measureActive ? 'orange' : '#217ccd';
+            // Mouse cursor
+            let mapEl = document.getElementById('map');
+            mapEl.style.cursor = measureActive ? 'crosshair' : 'default';
+            resetMeasurement();
+          }
+        }
+      }); // End of promise (loading files)
+    } // End of loadGEOJSONFiles
 
     // Load the GeoJSON files
     loadGeoJSONFiles(filePaths2);
